@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';  
-import { getFirestore } from 'firebase/firestore';  
-import { getAnalytics, isSupported } from 'firebase/analytics';  // Import isSupported
+import { getAuth } from 'firebase/auth';  // Import Firebase Authentication
+import { getFirestore, collection, addDoc } from 'firebase/firestore';  // Import Firestore
 
 // Firebase configuration object (from Firebase console)
 const firebaseConfig = {
@@ -21,25 +20,19 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const firestore = getFirestore(app);
 
-// Function to initialize Firebase Analytics conditionally
-const initializeAnalytics = async () => {
-  let analytics;
-  // Wait for isSupported() to resolve
-  const supported = await isSupported();
-  if (supported) {
-    analytics = getAnalytics(app);
+// Function to save log data to Firestore
+const saveLiftData = async (userId: string, week: string, exercises: any) => {
+  try {
+    const docRef = await addDoc(collection(firestore, "lifts"), {
+      userId,
+      week,
+      exercises,
+      timestamp: new Date(),
+    });
+    console.log("Document written with ID: ", docRef.id);
+  } catch (e) {
+    console.error("Error adding document: ", e);
   }
-  return analytics;
 };
 
-// Call the function to initialize analytics
-initializeAnalytics().then((analytics) => {
-  // analytics will be undefined if analytics is not supported
-  if (analytics) {
-    console.log("Analytics initialized");
-  } else {
-    console.log("Analytics not supported in this environment");
-  }
-});
-
-export { auth, firestore };
+export { auth, firestore, saveLiftData };

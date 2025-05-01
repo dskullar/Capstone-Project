@@ -1,27 +1,30 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Text } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../FirebaseConfig'; // Ensure correct path
-import { StackNavigationProp } from '@react-navigation/stack';
+import { auth, firestore } from '../FirebaseConfig'; // Ensure correct path
+import { setDoc, doc } from 'firebase/firestore';
 
-// Define the type for navigation
-type RegisterScreenNavigationProp = StackNavigationProp<any, 'Register'>;
-
-interface RegisterScreenProps {
-  navigation: RegisterScreenNavigationProp;
-}
-
-const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
+const RegisterScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState(''); // Username field
   const [error, setError] = useState<string | null>(null); // Explicitly typing the error state
 
   const handleRegister = async () => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
       console.log('User registered successfully');
-      navigation.navigate('Login');  // Navigate to login after successful registration
-    } catch (error: any) { // Explicitly typing the error here
+
+      // Save the user information to Firestore
+      await setDoc(doc(firestore, 'users', user.uid), {
+        email: email,
+        username: username, // Save the username
+        friends: {}, // Empty friend list to start with
+      });
+
+      alert('User registered successfully');
+    } catch (error: any) {
       setError(error.message);
       console.log('Registration error:', error.message);
     }
@@ -40,7 +43,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
-        style={{ height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 20 }}
+        style={{ height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10 }}
+      />
+      <TextInput
+        placeholder="Username"
+        value={username}
+        onChangeText={setUsername}
+        style={{ height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10 }}
       />
       {error ? <Text style={{ color: 'red' }}>{error}</Text> : null}
       <Button title="Register" onPress={handleRegister} />

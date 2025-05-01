@@ -1,28 +1,181 @@
-// screens/LogLiftScreen.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button } from 'react-native';
+import { View, Text, Button, TextInput, ScrollView, StyleSheet } from 'react-native';
+import { firestore } from '../FirebaseConfig'; // Firestore config
+import { getAuth } from 'firebase/auth';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-const LogLiftScreen = ({ navigation }: any) => {
-  const [liftAmount, setLiftAmount] = useState('');
+const LogLiftScreen = () => {
+  const [sessionDate, setSessionDate] = useState<string>(''); // Manually inputted date as string (MM/DD/YY)
+  const [exercise, setExercise] = useState<string>(''); // Exercise name
+  const [reps, setReps] = useState<string>(''); // Reps
+  const [weight, setWeight] = useState<string>(''); // Weight
+  const [sets, setSets] = useState<{ reps: string; weight: string }[]>([]); // Store sets for each exercise
+  const [exercisesList, setExercisesList] = useState<{ exercise: string; sets: { reps: string; weight: string }[] }[]>([]); // Store exercises with sets
 
-  const handleSaveLift = () => {
-    // Logic to save the lift amount (e.g., save to state, database, etc.)
-    console.log('Lift logged:', liftAmount);
-    navigation.navigate('Progress'); // Navigate to Progress Screen
+  // Add a set to the current exercise
+  const addSet = () => {
+    if (reps && weight) {
+      setSets([...sets, { reps, weight }]);
+      setReps(''); // Clear the reps field
+      setWeight(''); // Clear the weight field
+    }
+  };
+
+  // Add exercise with its sets to the session
+  const addExercise = () => {
+    if (exercise && sets.length > 0) {
+      setExercisesList([...exercisesList, { exercise, sets }]);
+      setExercise(''); // Clear the exercise field
+      setSets([]); // Clear the sets
+    }
+  };
+
+  // Save session data to Firebase
+  const saveSession = async () => {
+    const user = getAuth().currentUser;
+    if (user && sessionDate && exercisesList.length > 0) {
+      try {
+        // Create a new session document
+        await addDoc(collection(firestore, 'lifts', user.uid, 'sessions'), {
+          date: sessionDate,  // Save the date entered by the user
+          timestamp: serverTimestamp(),
+          exercises: exercisesList,
+        });
+        alert('Session saved successfully!');
+        setExercisesList([]); // Clear exercises list after saving
+        setSessionDate(''); // Clear the date input
+      } catch (error) {
+        console.error('Error saving session:', error);
+      }
+    } else {
+      alert('Please provide all details before saving.');
+    }
   };
 
   return (
-    <View>
-      <Text>Log Your Lift</Text>
-      <TextInput
-        value={liftAmount}
-        onChangeText={setLiftAmount}
-        placeholder="Enter Lift Amount"
-        keyboardType="numeric"
-      />
-      <Button title="Save Lift" onPress={handleSaveLift} />
-    </View>
+    <ScrollView>
+      <View style={styles.container}>
+        <Text style={styles.header}>Log Your Workout Session</Text>
+
+        {/* Manual Date Input */}
+        <Text style={styles.label}>Session Date (MM/DD/YY)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter date (MM/DD/YY)"
+          value={sessionDate}
+          onChangeText={setSessionDate} // User manually inputs the date
+        />
+
+        {/* Exercise Input */}
+        <Text style={styles.label}>Exercise</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter exercise name"
+          value={exercise}
+          onChangeText={setExercise}
+        />
+
+        {/* Reps Input */}
+        <Text style={styles.label}>Reps</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter reps"
+          value={reps}
+          onChangeText={setReps}
+          keyboardType="number-pad"
+        />
+
+        {/* Weight Input */}
+        <Text style={styles.label}>Weight (lbs)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter weight"
+          value={weight}
+          onChangeText={setWeight}
+          keyboardType="number-pad"
+        />
+
+        {/* Add set button */}
+        <Button title="Add Set" onPress={addSet} />
+
+        {/* Display sets added */}
+        {sets.length > 0 && (
+          <View style={styles.setsContainer}>
+            <Text style={styles.subHeader}>Sets Added:</Text>
+            {sets.map((set, index) => (
+              <Text key={index} style={styles.setText}>
+                Reps: {set.reps}, Weight: {set.weight} lbs
+              </Text>
+            ))}
+          </View>
+        )}
+
+        {/* Add exercise button */}
+        <Button title="Add Exercise" onPress={addExercise} />
+
+        {/* Display exercises added */}
+        {exercisesList.length > 0 && (
+          <View style={styles.exercisesContainer}>
+            <Text style={styles.subHeader}>Exercises Added:</Text>
+            {exercisesList.map((item, index) => (
+              <View key={index}>
+                <Text style={styles.exerciseText}>{item.exercise}</Text>
+                {item.sets.map((set, setIndex) => (
+                  <Text key={setIndex} style={styles.setText}>
+                    Reps: {set.reps}, Weight: {set.weight} lbs
+                  </Text>
+                ))}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Save session button */}
+        <Button title="Save Session" onPress={saveSession} />
+      </View>
+    </ScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+  },
+  header: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    marginVertical: 5,
+  },
+  input: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 15,
+    paddingLeft: 8,
+  },
+  setsContainer: {
+    marginVertical: 10,
+  },
+  setText: {
+    fontSize: 14,
+    marginLeft: 10,
+  },
+  exercisesContainer: {
+    marginVertical: 10,
+  },
+  exerciseText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  subHeader: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginVertical: 10,
+  },
+});
 
 export default LogLiftScreen;
