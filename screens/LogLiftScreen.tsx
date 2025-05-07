@@ -3,6 +3,7 @@ import { View, Text, Button, TextInput, ScrollView, StyleSheet } from 'react-nat
 import { firestore } from '../FirebaseConfig'; // Firestore config
 import { getAuth } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Calendar } from 'react-native-calendars'; // Import the Calendar component
 
 const LogLiftScreen = () => {
   const [sessionDate, setSessionDate] = useState<string>(''); // Manually inputted date as string (MM/DD/YY)
@@ -11,6 +12,8 @@ const LogLiftScreen = () => {
   const [weight, setWeight] = useState<string>(''); // Weight
   const [sets, setSets] = useState<{ reps: string; weight: string }[]>([]); // Store sets for each exercise
   const [exercisesList, setExercisesList] = useState<{ exercise: string; sets: { reps: string; weight: string }[] }[]>([]); // Store exercises with sets
+
+  const [isCalendarVisible, setIsCalendarVisible] = useState<boolean>(false); // State to control calendar visibility
 
   // Add a set to the current exercise
   const addSet = () => {
@@ -52,19 +55,35 @@ const LogLiftScreen = () => {
     }
   };
 
+  // Function to handle date selection from the calendar
+  const onDateSelect = (day: { dateString: string }) => {
+    setSessionDate(day.dateString); // Set selected date to sessionDate
+    setIsCalendarVisible(false); // Close the calendar after date selection
+  };
+
   return (
     <ScrollView>
       <View style={styles.container}>
         <Text style={styles.header}>Log Your Workout Session</Text>
 
-        {/* Manual Date Input */}
-        <Text style={styles.label}>Session Date (MM/DD/YY)</Text>
+        {/* Session Date Picker */}
+        <Text style={styles.label}>Session Date</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter date (MM/DD/YY)"
+          placeholder="Select date"
           value={sessionDate}
-          onChangeText={setSessionDate} // User manually inputs the date
+          editable={false} // Make the input field non-editable, as we are using calendar picker
         />
+        <Button title="Pick Date" onPress={() => setIsCalendarVisible(true)} /> {/* Button to open calendar */}
+        
+        {isCalendarVisible && (
+          <Calendar
+            markedDates={{
+              [sessionDate]: { selected: true, selectedColor: 'blue' },
+            }}
+            onDayPress={onDateSelect} // Set the selected date
+          />
+        )}
 
         {/* Exercise Input */}
         <Text style={styles.label}>Exercise</Text>
