@@ -1,13 +1,13 @@
-// screens/FriendLogsScreen.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { firestore } from '../FirebaseConfig';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 
 const FriendLogsScreen = ({ route }: any) => {
-  const { username } = route.params;  // Get the friend's username from params
-  const [friendLogs, setFriendLogs] = useState<any[]>([]);  // Store friend's logs
+  const { username } = route.params;
+  const [friendLogs, setFriendLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchFriendLogs();
@@ -21,17 +21,17 @@ const FriendLogsScreen = ({ route }: any) => {
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
-        const friendDoc = querySnapshot.docs[0];  // Assuming the first document is the correct one
+        const friendDoc = querySnapshot.docs[0];
         const friendId = friendDoc.id;
 
-        // Now fetch the sessions for that friend
         const sessionsRef = collection(firestore, 'lifts', friendId, 'sessions');
         const sessionsSnapshot = await getDocs(sessionsRef);
 
         const logs: any[] = [];
-        sessionsSnapshot.forEach((doc) => {
-          logs.push(doc.data());
-        });
+        sessionsSnapshot.forEach((doc) => logs.push(doc.data()));
+
+        // Sort logs by date (newest first)
+        logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         setFriendLogs(logs);
       }
@@ -42,29 +42,45 @@ const FriendLogsScreen = ({ route }: any) => {
     }
   };
 
+  const toggleDate = (date: string) => {
+    setExpandedDates((prev) => {
+      const newSet = new Set(prev);
+      newSet.has(date) ? newSet.delete(date) : newSet.add(date);
+      return newSet;
+    });
+  };
+
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Logs for {username}</Text>
+
       {loading ? (
-        <Text>Loading...</Text>
+        <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 20 }} />
       ) : friendLogs.length > 0 ? (
         friendLogs.map((log, index) => (
-          <View key={index} style={styles.logContainer}>
-            <Text style={styles.dateText}>{log.date}</Text>
-            {log.exercises.map((exercise: any, idx: number) => (
-              <View key={idx} style={styles.exerciseCard}>
-                <Text style={styles.exerciseText}>{exercise.exercise}</Text>
-                {exercise.sets.map((set: any, setIndex: number) => (
-                  <Text key={setIndex} style={styles.setText}>
-                    Reps: {set.reps}, Weight: {set.weight} lbs
-                  </Text>
-                ))}
-              </View>
-            ))}
+          <View key={index} style={styles.dateCard}>
+            <TouchableOpacity onPress={() => toggleDate(log.date)} style={styles.dateHeader}>
+              <Text style={styles.dateText}>{log.date}</Text>
+              <Text style={styles.expandText}>
+                {expandedDates.has(log.date) ? 'Hide' : 'View'}
+              </Text>
+            </TouchableOpacity>
+
+            {expandedDates.has(log.date) &&
+              log.exercises.map((exercise: any, idx: number) => (
+                <View key={idx} style={styles.exerciseCard}>
+                  <Text style={styles.exerciseText}>{exercise.exercise}</Text>
+                  {exercise.sets.map((set: any, setIndex: number) => (
+                    <Text key={setIndex} style={styles.setText}>
+                      Reps: {set.reps}, Weight: {set.weight} lbs
+                    </Text>
+                  ))}
+                </View>
+              ))}
           </View>
         ))
       ) : (
-        <Text>No logs found for this user.</Text>
+        <Text style={styles.noLogs}>No logs found for this user.</Text>
       )}
     </ScrollView>
   );
@@ -72,31 +88,39 @@ const FriendLogsScreen = ({ route }: any) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: 20,
-    backgroundColor: '#f7f7f7',
+    backgroundColor: '#f8f9fa',
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     marginBottom: 20,
+    textAlign: 'center',
+    color: '#222',
   },
-  logContainer: {
-    marginBottom: 20,
+  dateCard: {
     backgroundColor: '#fff',
-    padding: 15,
     borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
+    padding: 15,
+    marginBottom: 15,
+    elevation: 2,
+  },
+  dateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   dateText: {
     fontSize: 18,
     fontWeight: '600',
   },
+  expandText: {
+    fontSize: 14,
+    color: '#007AFF',
+  },
   exerciseCard: {
     marginTop: 10,
+    paddingLeft: 10,
   },
   exerciseText: {
     fontSize: 16,
@@ -104,7 +128,14 @@ const styles = StyleSheet.create({
   },
   setText: {
     fontSize: 14,
-    marginBottom: 5,
+    marginLeft: 10,
+    color: '#444',
+  },
+  noLogs: {
+    fontSize: 16,
+    color: 'gray',
+    textAlign: 'center',
+    marginTop: 30,
   },
 });
 

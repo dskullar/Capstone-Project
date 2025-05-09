@@ -1,52 +1,47 @@
 import React, { useState } from 'react';
-import { View, Text, Button, TextInput, ScrollView, StyleSheet } from 'react-native';
-import { firestore } from '../FirebaseConfig'; // Firestore config
+import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { firestore } from '../FirebaseConfig';
 import { getAuth } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { Calendar } from 'react-native-calendars'; // Import the Calendar component
+import { Calendar } from 'react-native-calendars';
 
 const LogLiftScreen = () => {
-  const [sessionDate, setSessionDate] = useState<string>(''); // Manually inputted date as string (MM/DD/YY)
-  const [exercise, setExercise] = useState<string>(''); // Exercise name
-  const [reps, setReps] = useState<string>(''); // Reps
-  const [weight, setWeight] = useState<string>(''); // Weight
-  const [sets, setSets] = useState<{ reps: string; weight: string }[]>([]); // Store sets for each exercise
-  const [exercisesList, setExercisesList] = useState<{ exercise: string; sets: { reps: string; weight: string }[] }[]>([]); // Store exercises with sets
+  const [sessionDate, setSessionDate] = useState('');
+  const [exercise, setExercise] = useState('');
+  const [reps, setReps] = useState('');
+  const [weight, setWeight] = useState('');
+  const [sets, setSets] = useState<{ reps: string; weight: string }[]>([]);
+  const [exercisesList, setExercisesList] = useState<{ exercise: string; sets: { reps: string; weight: string }[] }[]>([]);
+  const [isCalendarVisible, setIsCalendarVisible] = useState(false);
 
-  const [isCalendarVisible, setIsCalendarVisible] = useState<boolean>(false); // State to control calendar visibility
-
-  // Add a set to the current exercise
   const addSet = () => {
     if (reps && weight) {
       setSets([...sets, { reps, weight }]);
-      setReps(''); // Clear the reps field
-      setWeight(''); // Clear the weight field
+      setReps('');
+      setWeight('');
     }
   };
 
-  // Add exercise with its sets to the session
   const addExercise = () => {
     if (exercise && sets.length > 0) {
       setExercisesList([...exercisesList, { exercise, sets }]);
-      setExercise(''); // Clear the exercise field
-      setSets([]); // Clear the sets
+      setExercise('');
+      setSets([]);
     }
   };
 
-  // Save session data to Firebase
   const saveSession = async () => {
     const user = getAuth().currentUser;
     if (user && sessionDate && exercisesList.length > 0) {
       try {
-        // Create a new session document
         await addDoc(collection(firestore, 'lifts', user.uid, 'sessions'), {
-          date: sessionDate,  // Save the date entered by the user
+          date: sessionDate,
           timestamp: serverTimestamp(),
           exercises: exercisesList,
         });
         alert('Session saved successfully!');
-        setExercisesList([]); // Clear exercises list after saving
-        setSessionDate(''); // Clear the date input
+        setExercisesList([]);
+        setSessionDate('');
       } catch (error) {
         console.error('Error saving session:', error);
       }
@@ -55,46 +50,39 @@ const LogLiftScreen = () => {
     }
   };
 
-  // Function to handle date selection from the calendar
   const onDateSelect = (day: { dateString: string }) => {
-    setSessionDate(day.dateString); // Set selected date to sessionDate
-    setIsCalendarVisible(false); // Close the calendar after date selection
+    setSessionDate(day.dateString);
+    setIsCalendarVisible(false);
   };
 
   return (
-    <ScrollView>
+    <ScrollView style={styles.scroll}>
       <View style={styles.container}>
-        <Text style={styles.header}>Log Your Workout Session</Text>
+        <Text style={styles.header}>Log Your Workout</Text>
 
-        {/* Session Date Picker */}
         <Text style={styles.label}>Session Date</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Select date"
-          value={sessionDate}
-          editable={false} // Make the input field non-editable, as we are using calendar picker
-        />
-        <Button title="Pick Date" onPress={() => setIsCalendarVisible(true)} /> {/* Button to open calendar */}
-        
+        <TouchableOpacity onPress={() => setIsCalendarVisible(true)} style={styles.input}>
+          <Text style={{ color: sessionDate ? '#000' : '#aaa' }}>
+            {sessionDate || 'Select a date'}
+          </Text>
+        </TouchableOpacity>
+
         {isCalendarVisible && (
           <Calendar
-            markedDates={{
-              [sessionDate]: { selected: true, selectedColor: 'blue' },
-            }}
-            onDayPress={onDateSelect} // Set the selected date
+            markedDates={{ [sessionDate]: { selected: true, selectedColor: 'blue' } }}
+            onDayPress={onDateSelect}
           />
         )}
 
-        {/* Exercise Input */}
         <Text style={styles.label}>Exercise</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter exercise name"
           value={exercise}
           onChangeText={setExercise}
+          placeholderTextColor="#aaa"
         />
 
-        {/* Reps Input */}
         <Text style={styles.label}>Reps</Text>
         <TextInput
           style={styles.input}
@@ -102,9 +90,9 @@ const LogLiftScreen = () => {
           value={reps}
           onChangeText={setReps}
           keyboardType="number-pad"
+          placeholderTextColor="#aaa"
         />
 
-        {/* Weight Input */}
         <Text style={styles.label}>Weight (lbs)</Text>
         <TextInput
           style={styles.input}
@@ -112,36 +100,37 @@ const LogLiftScreen = () => {
           value={weight}
           onChangeText={setWeight}
           keyboardType="number-pad"
+          placeholderTextColor="#aaa"
         />
 
-        {/* Add set button */}
-        <Button title="Add Set" onPress={addSet} />
+        <TouchableOpacity style={styles.button} onPress={addSet}>
+          <Text style={styles.buttonText}>Add Set</Text>
+        </TouchableOpacity>
 
-        {/* Display sets added */}
         {sets.length > 0 && (
-          <View style={styles.setsContainer}>
-            <Text style={styles.subHeader}>Sets Added:</Text>
+          <View style={styles.section}>
+            <Text style={styles.subHeader}>Sets:</Text>
             {sets.map((set, index) => (
               <Text key={index} style={styles.setText}>
-                Reps: {set.reps}, Weight: {set.weight} lbs
+                Set {index + 1}: {set.reps} reps @ {set.weight} lbs
               </Text>
             ))}
           </View>
         )}
 
-        {/* Add exercise button */}
-        <Button title="Add Exercise" onPress={addExercise} />
+        <TouchableOpacity style={styles.button} onPress={addExercise}>
+          <Text style={styles.buttonText}>Add Exercise</Text>
+        </TouchableOpacity>
 
-        {/* Display exercises added */}
         {exercisesList.length > 0 && (
-          <View style={styles.exercisesContainer}>
-            <Text style={styles.subHeader}>Exercises Added:</Text>
+          <View style={styles.section}>
+            <Text style={styles.subHeader}>Exercises:</Text>
             {exercisesList.map((item, index) => (
               <View key={index}>
-                <Text style={styles.exerciseText}>{item.exercise}</Text>
-                {item.sets.map((set, setIndex) => (
-                  <Text key={setIndex} style={styles.setText}>
-                    Reps: {set.reps}, Weight: {set.weight} lbs
+                <Text style={styles.exerciseTitle}>{item.exercise}</Text>
+                {item.sets.map((set, i) => (
+                  <Text key={i} style={styles.setText}>
+                    Set {i + 1}: {set.reps} reps @ {set.weight} lbs
                   </Text>
                 ))}
               </View>
@@ -149,51 +138,83 @@ const LogLiftScreen = () => {
           </View>
         )}
 
-        {/* Save session button */}
-        <Button title="Save Session" onPress={saveSession} />
+        <TouchableOpacity style={styles.saveButton} onPress={saveSession}>
+          <Text style={styles.buttonText}>Save Session</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  scroll: {
+    backgroundColor: '#f8f9fa',
+  },
   container: {
-    padding: 20,
+    padding: 24,
   },
   header: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 24,
+    textAlign: 'center',
+    color: '#222',
   },
   label: {
     fontSize: 16,
-    marginVertical: 5,
+    marginBottom: 4,
+    color: '#333',
   },
   input: {
-    height: 40,
-    borderColor: 'gray',
+    height: 48,
+    borderColor: '#ccc',
     borderWidth: 1,
-    marginBottom: 15,
-    paddingLeft: 8,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
   },
-  setsContainer: {
-    marginVertical: 10,
+  button: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  saveButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  subHeader: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 6,
+    color: '#444',
+  },
+  section: {
+    marginTop: 10,
+    marginBottom: 10,
   },
   setText: {
     fontSize: 14,
-    marginLeft: 10,
+    color: '#333',
+    marginLeft: 8,
   },
-  exercisesContainer: {
-    marginVertical: 10,
-  },
-  exerciseText: {
+  exerciseTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  subHeader: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginVertical: 10,
+    fontWeight: '500',
+    marginTop: 10,
+    color: '#222',
   },
 });
 

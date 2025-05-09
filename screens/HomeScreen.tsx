@@ -31,7 +31,7 @@ const HomeScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to GymApp!</Text>
+      <Text style={styles.title}>Welcome to BodyLab!</Text>
       {username ? (
         <Text style={styles.username}>Hello, {username}!</Text> // Display the username
       ) : (

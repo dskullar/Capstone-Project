@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
-import { firestore } from '../FirebaseConfig'; // Ensure correct path
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { firestore } from '../FirebaseConfig';
 import { getAuth } from 'firebase/auth';
 import { query, where, getDocs, collection, doc, setDoc } from 'firebase/firestore';
 
 const AddFriendScreen = () => {
   const [friendUsername, setFriendUsername] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(''); // To track successful friend addition
-  const [isLoading, setIsLoading] = useState(false); // Track if we're waiting for Firestore response
+  const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleAddFriend = async () => {
     const user = getAuth().currentUser;
@@ -18,32 +18,28 @@ const AddFriendScreen = () => {
         setError('');
         setSuccess('');
 
-        // Query Firestore users collection to find the friend by their username
         const usersRef = collection(firestore, 'users');
-        const q = query(usersRef, where('username', '==', friendUsername));
-
+        const q = query(usersRef, where('username', '==', friendUsername.trim()));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
           setError('Friend not found. Please check the username.');
         } else {
-          // If friend exists, add the username to the current user's friends list
-          const friendDoc = querySnapshot.docs[0]; // Assume the first match is the correct one
+          const friendDoc = querySnapshot.docs[0];
           const userRef = doc(firestore, 'users', user.uid);
 
-          // Add friend username to current user's friends array (merge to avoid overwriting)
           await setDoc(userRef, {
-            friends: [friendUsername], // Adding the friend to the friends list
+            friends: [friendUsername],
           }, { merge: true });
 
           setSuccess('Friend added successfully!');
-          setFriendUsername(''); // Clear the input field
+          setFriendUsername('');
         }
       } catch (error) {
         console.error('Error adding friend:', error);
-        setError('Error adding friend. Please try again later.');
+        setError('Something went wrong. Try again later.');
       } finally {
-        setIsLoading(false); // Stop the loading indicator
+        setIsLoading(false);
       }
     } else {
       setError('No user is logged in.');
@@ -53,20 +49,23 @@ const AddFriendScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Add a Friend</Text>
-      
+
       <TextInput
         style={styles.input}
-        placeholder="Enter friend's username"
+        placeholder="Friend's username"
         value={friendUsername}
         onChangeText={setFriendUsername}
+        placeholderTextColor="#aaa"
       />
-      
-      {error && <Text style={styles.error}>{error}</Text>}
-      {success && <Text style={styles.success}>{success}</Text>}
 
-      <Button title="Add Friend" onPress={handleAddFriend} disabled={isLoading} />
-      
-      {isLoading && <Text style={styles.loadingText}>Loading...</Text>}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {success ? <Text style={styles.success}>{success}</Text> : null}
+
+      <TouchableOpacity style={styles.button} onPress={handleAddFriend} disabled={isLoading}>
+        <Text style={styles.buttonText}>{isLoading ? 'Adding...' : 'Add Friend'}</Text>
+      </TouchableOpacity>
+
+      {isLoading && <ActivityIndicator size="small" color="#007AFF" style={{ marginTop: 10 }} />}
     </View>
   );
 };
@@ -74,32 +73,49 @@ const AddFriendScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f8f9fa',
+    padding: 24,
     justifyContent: 'center',
-    padding: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 24,
+    textAlign: 'center',
+    color: '#222',
   },
   input: {
-    height: 40,
-    borderColor: 'gray',
+    height: 48,
+    borderColor: '#ccc',
     borderWidth: 1,
-    marginBottom: 20,
-    paddingHorizontal: 8,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    fontSize: 16,
+    color: '#000',
+  },
+  button: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
   },
   error: {
     color: 'red',
-    marginBottom: 20,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   success: {
     color: 'green',
-    marginBottom: 20,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: 'blue',
+    textAlign: 'center',
+    marginBottom: 8,
   },
 });
 

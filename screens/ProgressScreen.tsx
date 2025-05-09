@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, TextInput, ScrollView, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+} from 'react-native';
 import { firestore } from '../FirebaseConfig';
 import { getAuth } from 'firebase/auth';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -16,9 +24,7 @@ const ProgressScreen = () => {
   const [isEndDateCalendarVisible, setIsEndDateCalendarVisible] = useState(false);
 
   useEffect(() => {
-    if (startDate && endDate) {
-      fetchExercisesForDateRange();
-    }
+    if (startDate && endDate) fetchExercisesForDateRange();
   }, [startDate, endDate]);
 
   const fetchExercisesForDateRange = async () => {
@@ -101,10 +107,7 @@ const ProgressScreen = () => {
               const weightIncrease = parseFloat(set.weight) - parseFloat(prevSet.weight);
               const percentageIncrease = (weightIncrease / parseFloat(prevSet.weight)) * 100;
 
-              progress = {
-                weightIncrease,
-                percentageIncrease,
-              };
+              progress = { weightIncrease, percentageIncrease };
             }
           }
 
@@ -127,24 +130,20 @@ const ProgressScreen = () => {
       const lastSession = progressData[progressData.length - 1];
 
       selectedExercises.forEach((exerciseName: string) => {
-        const firstExercise = firstSession.exercises.find((e: any) => e.exercise === exerciseName);
-        const lastExercise = lastSession.exercises.find((e: any) => e.exercise === exerciseName);
+        const first = firstSession.exercises.find((e: any) => e.exercise === exerciseName);
+        const last = lastSession.exercises.find((e: any) => e.exercise === exerciseName);
 
-        const firstMax = firstExercise ? Math.max(...firstExercise.sets.map((s: any) => parseFloat(s.weight))) : 0;
-        const lastMax = lastExercise ? Math.max(...lastExercise.sets.map((s: any) => parseFloat(s.weight))) : 0;
+        const firstMax = first ? Math.max(...first.sets.map((s: any) => parseFloat(s.weight))) : 0;
+        const lastMax = last ? Math.max(...last.sets.map((s: any) => parseFloat(s.weight))) : 0;
 
         labels.push(`${exerciseName} - Start`);
         data.push(firstMax);
-
         labels.push(`${exerciseName} - End`);
         data.push(lastMax);
       });
     }
 
-    return {
-      labels,
-      datasets: [{ data }],
-    };
+    return { labels, datasets: [{ data }] };
   };
 
   const onStartDateSelect = (day: { dateString: string }) => {
@@ -161,31 +160,38 @@ const ProgressScreen = () => {
     <ScrollView style={styles.container}>
       <Text style={styles.header}>Compare Your Progress</Text>
 
-      {/* Start Date Picker */}
+      {/* Date Pickers */}
       <Text style={styles.label}>Start Date</Text>
-      <TextInput style={styles.input} value={startDate} editable={false} />
-      <Button title="Pick Start Date" onPress={() => setIsStartDateCalendarVisible(true)} />
+      <TouchableOpacity style={styles.input} onPress={() => setIsStartDateCalendarVisible(true)}>
+        <Text style={startDate ? styles.inputText : styles.placeholderText}>
+          {startDate || 'Pick a start date'}
+        </Text>
+      </TouchableOpacity>
       {isStartDateCalendarVisible && (
         <Calendar markedDates={{ [startDate]: { selected: true, selectedColor: 'blue' } }} onDayPress={onStartDateSelect} />
       )}
 
-      {/* End Date Picker */}
       <Text style={styles.label}>End Date</Text>
-      <TextInput style={styles.input} value={endDate} editable={false} />
-      <Button title="Pick End Date" onPress={() => setIsEndDateCalendarVisible(true)} />
+      <TouchableOpacity style={styles.input} onPress={() => setIsEndDateCalendarVisible(true)}>
+        <Text style={endDate ? styles.inputText : styles.placeholderText}>
+          {endDate || 'Pick an end date'}
+        </Text>
+      </TouchableOpacity>
       {isEndDateCalendarVisible && (
         <Calendar markedDates={{ [endDate]: { selected: true, selectedColor: 'blue' } }} onDayPress={onEndDateSelect} />
       )}
 
       {/* Exercise Selection */}
-      <Text style={styles.subtitle}>Select Exercises to Compare</Text>
+      <Text style={styles.subtitle}>Select Exercises</Text>
       {exerciseList.map((item, index) => (
         <View key={index} style={styles.exerciseCard}>
           <Text style={styles.exerciseText}>{item.exercise}</Text>
           <TouchableOpacity
             style={[
               styles.selectButton,
-              { backgroundColor: selectedExercises.includes(item.exercise) ? 'green' : '#2196F3' },
+              {
+                backgroundColor: selectedExercises.includes(item.exercise) ? 'green' : '#2196F3',
+              },
             ]}
             onPress={() => handleExerciseSelect(item.exercise)}
           >
@@ -194,14 +200,14 @@ const ProgressScreen = () => {
         </View>
       ))}
 
-      <TouchableOpacity style={styles.button} onPress={handleCompare}>
+      <TouchableOpacity style={styles.compareButton} onPress={handleCompare}>
         <Text style={styles.buttonText}>Compare Progress</Text>
       </TouchableOpacity>
 
       {/* Bar Chart */}
       {progressData.length >= 2 && (
         <View>
-          <Text style={styles.subtitle}>Highest Weight Comparison</Text>
+          <Text style={styles.subtitle}>Max Weight Comparison</Text>
           <BarChart
             data={generateBarChartData()}
             width={Dimensions.get('window').width - 40}
@@ -224,16 +230,16 @@ const ProgressScreen = () => {
         </View>
       )}
 
-      {/* Progress Details */}
+      {/* Detailed Progress */}
       {progressData.map((weekData, index) => (
         <View key={index} style={styles.progressDataContainer}>
           <Text style={styles.subtitle}>Date: {weekData.week}</Text>
-          {weekData.exercises.map((exerciseData: any, idx: number) => (
+          {weekData.exercises.map((exercise: any, idx: number) => (
             <View key={idx} style={styles.exerciseDetails}>
-              <Text style={styles.exerciseText}>{exerciseData.exercise}</Text>
-              {exerciseData.sets.map((set: any, setIndex: number) => (
+              <Text style={styles.exerciseText}>{exercise.exercise}</Text>
+              {exercise.sets.map((set: any, setIndex: number) => (
                 <Text key={setIndex} style={styles.setDetails}>
-                  Reps: {set.reps}, Weight: {set.weight} lbs
+                  Set {setIndex + 1}: {set.reps} reps @ {set.weight} lbs
                   {set.progress && (
                     <Text style={{ color: 'green' }}>
                       {' '}
@@ -251,79 +257,49 @@ const ProgressScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#f7f7f7',
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    marginVertical: 5,
-  },
+  container: { padding: 20, backgroundColor: '#f7f7f7' },
+  header: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  label: { fontSize: 16, marginVertical: 5, fontWeight: '500' },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: '#4CAF50',
     padding: 12,
-    borderRadius: 5,
     marginBottom: 10,
+    borderRadius: 8,
+    backgroundColor: '#fff',
   },
-  buttonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: 16,
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
+  inputText: { fontSize: 16, color: '#000' },
+  placeholderText: { fontSize: 16, color: '#aaa' },
+  subtitle: { fontSize: 18, fontWeight: '600', marginTop: 20, marginBottom: 10 },
   exerciseCard: {
     backgroundColor: '#fff',
     padding: 15,
     marginBottom: 10,
-    borderRadius: 5,
+    borderRadius: 8,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  exerciseText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
+  exerciseText: { fontSize: 16, fontWeight: '500' },
   selectButton: {
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 10,
+    marginTop: 8,
+    paddingVertical: 10,
+    borderRadius: 8,
     alignItems: 'center',
   },
-  noDataText: {
-    fontSize: 16,
-    color: 'gray',
-    textAlign: 'center',
+  buttonText: { color: '#fff', fontSize: 16 },
+  compareButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 20,
   },
-  progressDataContainer: {
-    marginTop: 20,
-  },
-  exerciseDetails: {
-    marginLeft: 20,
-  },
-  setDetails: {
-    fontSize: 14,
-    marginBottom: 5,
-  },
+  progressDataContainer: { marginBottom: 20 },
+  exerciseDetails: { marginLeft: 10 },
+  setDetails: { fontSize: 14, marginBottom: 4 },
 });
 
 export default ProgressScreen;
